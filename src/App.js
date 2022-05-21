@@ -1,5 +1,5 @@
 // import "./App.css";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Navbar,
   Container,
@@ -9,12 +9,56 @@ import {
   Col,
   Card,
 } from "react-bootstrap";
-// import NavBrandLogo from "../public/images/navbrand.svg";
+// import axios from "axios";
+import uuid from "react-uuid";
 
 function App() {
+  const [prompt, setPrompt] = useState("");
+  const [dialog, setDialog] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const localDialog = localStorage.getItem("dialog");
+    if (localDialog) {
+      setDialog(JSON.parse(localDialog));
+    }
+  }, []);
+
+  const handleChange = (e) => {
+    setPrompt(e.target.value);
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    fetch("https://api.openai.com/v1/engines/text-curie-001/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.REACT_APP_OPENAI_SECRET}`,
+      },
+      body: JSON.stringify({ prompt: prompt }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        const currentDialog = {
+          prompt: prompt,
+          response: data.choices[0].text,
+          id: uuid(),
+        };
+        const updatedDialog = [...dialog, currentDialog];
+        setDialog(updatedDialog);
+        console.log(dialog);
+        localStorage.setItem("dialog", JSON.stringify(updatedDialog));
+        setPrompt("");
+        setLoading(false);
+      });
+    setPrompt("");
+  };
   return (
     <>
-      <Navbar bg='dark' variant='dark'>
+      <Navbar bg='primary' variant='dark'>
         <Container>
           <Navbar.Brand href='#home'>
             <img
@@ -32,7 +76,7 @@ function App() {
         <Container>
           <Row className='justify-content-center'>
             <Col md={6}>
-              <Form className='mb-2'>
+              <Form onSubmit={handleSubmit}>
                 <Form.Group controlId='exampleForm.ControlTextarea1'>
                   <Form.Label>Please enter prompt:</Form.Label>
                   <Form.Control
@@ -40,43 +84,45 @@ function App() {
                     rows='5'
                     name='prompt'
                     placeholder='What would you like to tell the A.I.?'
-
-                    // onChange={this.handleInputChange}
+                    value={prompt}
+                    onChange={handleChange}
                   />
                 </Form.Group>
+                <div className='d-grid d-lg-flex justify-content-lg-end'>
+                  <Button
+                    className='align-self-end mt-2'
+                    type='submit'
+                    disabled={loading}
+                  >
+                    {loading ? "Loading" : "Submit"}
+                  </Button>
+                </div>
               </Form>
-              <div className='d-grid d-lg-flex justify-content-lg-end'>
-                <Button className='align-self-end'>Submit</Button>
-              </div>
             </Col>
           </Row>
         </Container>
         <Container>
           <Row className='justify-content-center'>
             <Col md={6}>
-              <h3>Responses</h3>
-              <Card style={{ width: "100%" }}>
-                <Card.Body>
-                  <div className='d-flex'>
-                    <Card.Text className='p-2 fw-bold'>Prompt:</Card.Text>
-                    <Card.Text className='p-2'>
-                      Lorem ipsum dolor sit amet consectetur adipisicing elit.
-                    </Card.Text>
-                  </div>
-                  <div className='d-flex'>
-                    <Card.Text className='p-2 fw-bold'>Response:</Card.Text>
-                    <Card.Text className='p-2'>
-                      Lorem ipsum dolor sit amet consectetur adipisicing elit.
-                      Error aliquam, quaerat quo enim culpa voluptatibus
-                      nesciunt veritatis labore sint praesentium natus nobis
-                      molestiae quae iusto assumenda pariatur rerum facilis
-                      dolorem aperiam, fuga tenetur fugiat consequatur porro
-                      quidem. Dignissimos, sapiente. Tempora cum quasi quos
-                      nulla quas explicabo consectetur dignissimos ad. Libero!
-                    </Card.Text>
-                  </div>
-                </Card.Body>
-              </Card>
+              <h3>{dialog.length > 0 && "Responses"}</h3>
+              {dialog.map((d, idx) => (
+                <Card
+                  key={idx}
+                  className='mb-2 bg-light'
+                  style={{ width: "100%" }}
+                >
+                  <Card.Body>
+                    <div className='d-flex'>
+                      <Card.Text className='p-2 fw-bold'>Prompt:</Card.Text>
+                      <Card.Text className='p-2'>{d.prompt}</Card.Text>
+                    </div>
+                    <div className='d-flex'>
+                      <Card.Text className='p-2 fw-bold'>Response:</Card.Text>
+                      <Card.Text className='p-2'>{d.response}</Card.Text>
+                    </div>
+                  </Card.Body>
+                </Card>
+              ))}
             </Col>
           </Row>
         </Container>
