@@ -40,7 +40,13 @@ function App() {
       },
       body: JSON.stringify({ prompt: prompt }),
     })
-      .then((response) => response.json())
+      .then((response) => {
+        if (!response.ok) {
+          alert("Cannot complete request...");
+          return;
+        }
+        return response.json();
+      })
       .then((data) => {
         const currentDialog = {
           prompt: prompt,
@@ -49,10 +55,12 @@ function App() {
         };
         const updatedDialog = [...dialog, currentDialog];
         setDialog(updatedDialog);
-        console.log(dialog);
         localStorage.setItem("dialog", JSON.stringify(updatedDialog));
         setPrompt("");
         setLoading(false);
+      })
+      .catch((err) => {
+        console.log(err);
       });
     setPrompt("");
   };
