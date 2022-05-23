@@ -1,20 +1,13 @@
 // import "./App.css";
 import React, { useState, useEffect } from "react";
-import {
-  Navbar,
-  Container,
-  Form,
-  Button,
-  Row,
-  Col,
-  Card,
-} from "react-bootstrap";
-// import axios from "axios";
+import { Container } from "react-bootstrap";
 import uuid from "react-uuid";
+import { Nav, FormComponent, ResponseCard } from "./components";
 
 function App() {
   const [prompt, setPrompt] = useState("");
   const [dialog, setDialog] = useState([]);
+  const [engine, setEngine] = useState("text-curie-001");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -28,18 +21,34 @@ function App() {
     setPrompt(e.target.value);
   };
 
-  const handleSubmit = (e) => {
+  const handleOnChangeSelect = (e) => {
+    setEngine(e.target.value);
+  };
+
+  const data = {
+    prompt,
+    temperature: 0.5,
+    max_tokens: 64,
+    top_p: 1.0,
+    frequency_penalty: 0.0,
+    presence_penalty: 0.0,
+  };
+
+  const fetchOptions = {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.REACT_APP_OPENAI_SECRET}`,
+    },
+    body: JSON.stringify(data),
+  };
+
+  const url = `https://api.openai.com/v1/engines/${engine}/completions`;
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-
-    fetch("https://api.openai.com/v1/engines/text-curie-001/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.REACT_APP_OPENAI_SECRET}`,
-      },
-      body: JSON.stringify({ prompt: prompt }),
-    })
+    fetch(url, fetchOptions)
       .then((response) => {
         if (!response.ok) {
           alert("Cannot complete request...");
@@ -53,7 +62,7 @@ function App() {
           response: data.choices[0].text,
           id: uuid(),
         };
-        const updatedDialog = [...dialog, currentDialog];
+        const updatedDialog = [currentDialog, ...dialog];
         setDialog(updatedDialog);
         localStorage.setItem("dialog", JSON.stringify(updatedDialog));
         setPrompt("");
@@ -62,77 +71,22 @@ function App() {
       .catch((err) => {
         console.log(err);
       });
-    setPrompt("");
   };
+
   return (
     <>
-      <Navbar bg='primary' variant='dark'>
-        <Container>
-          <Navbar.Brand href='#home'>
-            <img
-              alt=''
-              src='https://openai.com/assets/images/favicon.svg?v=d04ebc881c'
-              width='30'
-              height='30'
-              className='d-inline-block align-top'
-            />{" "}
-            OpenAI Shopify Challenge
-          </Navbar.Brand>
-        </Container>
-      </Navbar>
+      <Nav />
       <main className='container mt-5'>
         <Container>
-          <Row className='justify-content-center'>
-            <Col md={6}>
-              <Form onSubmit={handleSubmit}>
-                <Form.Group controlId='exampleForm.ControlTextarea1'>
-                  <Form.Label>Please enter prompt:</Form.Label>
-                  <Form.Control
-                    as='textarea'
-                    rows='5'
-                    name='prompt'
-                    placeholder='What would you like to tell the A.I.?'
-                    value={prompt}
-                    onChange={handleChange}
-                  />
-                </Form.Group>
-                <div className='d-grid d-lg-flex justify-content-lg-end'>
-                  <Button
-                    className='align-self-end mt-2'
-                    type='submit'
-                    disabled={loading}
-                  >
-                    {loading ? "Loading" : "Submit"}
-                  </Button>
-                </div>
-              </Form>
-            </Col>
-          </Row>
-        </Container>
-        <Container>
-          <Row className='justify-content-center'>
-            <Col md={6}>
-              <h3>{dialog.length > 0 && "Responses"}</h3>
-              {dialog.map((d, idx) => (
-                <Card
-                  key={idx}
-                  className='mb-2 bg-light'
-                  style={{ width: "100%" }}
-                >
-                  <Card.Body>
-                    <div className='d-flex'>
-                      <Card.Text className='p-2 fw-bold'>Prompt:</Card.Text>
-                      <Card.Text className='p-2'>{d.prompt}</Card.Text>
-                    </div>
-                    <div className='d-flex'>
-                      <Card.Text className='p-2 fw-bold'>Response:</Card.Text>
-                      <Card.Text className='p-2'>{d.response}</Card.Text>
-                    </div>
-                  </Card.Body>
-                </Card>
-              ))}
-            </Col>
-          </Row>
+          <FormComponent
+            handleSubmit={handleSubmit}
+            handleChange={handleChange}
+            handleOnChangeSelect={handleOnChangeSelect}
+            engine={engine}
+            loading={loading}
+            prompt={prompt}
+          />
+          <ResponseCard loading={loading} dialog={dialog} />
         </Container>
       </main>
     </>
